@@ -8,15 +8,39 @@ from conans.util.fallbacks import default_output, default_requester
 
 def get(url, md5='', sha1='', sha256='', destination=".", filename="", keep_permissions=False,
         pattern=None, requester=None, output=None, verify=True, retry=None, retry_wait=None,
-        overwrite=False, auth=None, headers=None):
+        overwrite=False, auth=None, headers=None, download_cache=None):
     """ high level downloader + unzipper + (optional hash checker) + delete temporary zip
     """
     if not filename and ("?" in url or "=" in url):
         raise ConanException("Cannot deduce file name from url. Use 'filename' parameter.")
 
     filename = filename or os.path.basename(url)
-    download(url, filename, out=output, requester=requester, verify=verify, retry=retry,
-             retry_wait=retry_wait, overwrite=overwrite, auth=auth, headers=headers)
+
+    in_cache = False
+    if download_cache is not None and download_cache.contains(url):
+        download_cache.get(url, filename)
+        try:
+            if md5:
+                check_md5(filename, md5)
+            if sha1:
+                check_sha1(filename, sha1)
+            if sha256:
+                check_sha256(filename, sha256)
+            in_cache = True
+            if output:
+                output.info("Using cached version of {}".format(url))
+        except:
+            if output:
+                output.warn("Download cache contains {}, but with wrong checksum, attempting download again".format(url))
+            # Attempt to unlink the file with the checksum mismatch
+            try:
+                os.unlink(filename)
+            except:
+                pass
+
+    if not in_cache:
+        download(url, filename, out=output, requester=requester, verify=verify, retry=retry,
+                retry_wait=retry_wait, overwrite=overwrite, auth=auth, headers=headers)
 
     if md5:
         check_md5(filename, md5)
@@ -24,6 +48,13 @@ def get(url, md5='', sha1='', sha256='', destination=".", filename="", keep_perm
         check_sha1(filename, sha1)
     if sha256:
         check_sha256(filename, sha256)
+
+    if download_cache and not in_cache:
+        try:
+            download_cache.put(url, filename)
+        except Exception as e:
+            if output:
+                output.warn("Could not add {} to download cache: {}".format(url, str(e)))
 
     unzip(filename, destination=destination, keep_permissions=keep_permissions, pattern=pattern,
           output=output)

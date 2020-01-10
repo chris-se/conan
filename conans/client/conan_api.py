@@ -64,6 +64,7 @@ from conans.unicode import get_cwd
 from conans.util.files import exception_message_safe, mkdir, save_files
 from conans.util.log import configure_logger
 from conans.util.tracer import log_command, log_exception
+from conans.client.cache.download_cache import DownloadCache
 
 default_manifest_folder = '.conan_manifests'
 
@@ -156,6 +157,10 @@ class ConanApp(object):
         self.config = self.cache.config
         if self.config.non_interactive or quiet_output:
             self.user_io.disable_input()
+        if self.config.download_cache_path:
+            self.download_cache = DownloadCache(self.config.download_cache_path)
+        else:
+            self.download_cache = None
 
         # Adjust CONAN_LOGGING_LEVEL with the env readed
         conans.util.log.logger = configure_logger(self.config.logging_level,
@@ -177,7 +182,7 @@ class ConanApp(object):
         self.remote_manager = RemoteManager(self.cache, auth_manager, self.out, self.hook_manager)
 
         # Adjust global tool variables
-        set_global_instances(self.out, self.requester, self.config)
+        set_global_instances(self.out, self.requester, self.download_cache, self.config)
 
         self.runner = runner or ConanRunner(self.config.print_commands_to_output,
                                             self.config.generate_run_log_file,

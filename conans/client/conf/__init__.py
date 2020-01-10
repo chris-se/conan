@@ -162,6 +162,11 @@ default_package_id_mode = semver_direct_mode # environment CONAN_DEFAULT_PACKAGE
 # with "~/", will be relative to the conan user home, not to the system user home)
 path = ./data
 
+[download_cache]
+# Uncomment this to enable the download cache for downloads made by
+# conan to get the source of various packages.
+# path = ./download_cache
+
 [proxies]
 # Empty (or missing) section will try to use system proxies.
 # As documented in https://requests.kennethreitz.org/en/latest/user/advanced/#proxies - but see below
@@ -449,6 +454,25 @@ class ConanClientConfigParser(ConfigParser, object):
             result = conan_expand_user(result)
             if not os.path.isabs(result):
                 raise ConanException("Conan storage path has to be an absolute path")
+        return result
+
+    @property
+    def download_cache_path(self):
+        result = get_env("CONAN_DOWNLOAD_CACHE_PATH", None)
+        if not result:
+            # Try with conan.conf "download_cache"
+            try:
+                result = dict(self.get_conf("download_cache"))["path"]
+                if result.startswith("."):
+                    current_dir = os.path.dirname(self.filename)
+                    result = os.path.abspath(os.path.join(current_dir, result))
+            except (KeyError, ConanException):  # If storage not defined, to return None
+                pass
+
+        if result:
+            result = conan_expand_user(result)
+            if not os.path.isabs(result):
+                raise ConanException("Conan download cache path has to be an absolute path")
         return result
 
     @property
