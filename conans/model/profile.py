@@ -1,4 +1,5 @@
 import copy
+import fnmatch
 from collections import OrderedDict, defaultdict
 
 from conans.client import settings_preprocessor
@@ -19,6 +20,7 @@ class Profile(object):
         self.env_values = EnvValues()
         self.options = OptionsValues()
         self.build_requires = OrderedDict()  # ref pattern: list of ref
+        self.package_matchers = OrderedDict()
 
         # Cached processed values
         self.processed_settings = None  # Settings with values, and smart completion
@@ -77,6 +79,10 @@ class Profile(object):
         for pattern, req_list in self.build_requires.items():
             result.append("%s: %s" % (pattern, ", ".join(str(r) for r in req_list)))
 
+        result.append("[package_matchers]")
+        for matcher, package_list in self.package_matchers.items():
+            result.append("%s = %s" % (matcher, ", ".join(str(r) for r in package_list)))
+
         result.append("[env]")
         result.append(self.env_values.dumps())
 
@@ -89,6 +95,8 @@ class Profile(object):
         other.env_values.update(self.env_values)
         self.env_values = other.env_values
         self.options.update(other.options)
+        for matcher, package_list in other.package_matchers.items():
+            self.package_matchers.setdefault(matcher, []).extend(package_list)
         for pattern, req_list in other.build_requires.items():
             self.build_requires.setdefault(pattern, []).extend(req_list)
 
@@ -119,3 +127,34 @@ class Profile(object):
         Specified package settings are prioritized to profile"""
         for package_name, settings in package_settings.items():
             self.package_settings[package_name].update(settings)
+
+    def pattern_matches(self, pattern, recipie, stack = []):
+        """Determines if a pattern matches a given recipie.
+        This takes into account the package matchers defined in
+        the current profile"""
+
+        inverted = False
+        result = False
+        while pattern[:1] == "!":
+            pattern = pattern[1:]
+            inverted = not inverted
+
+        if pattern.startswith('$match{') and pattern.endswith('}'):
+            matcher = pattern[7:-1]
+            if matcher not in self.package_matchers:
+                result = False
+            elif matcher in stack:
+                raise ConanException("Error in profile: package_matcher {} references itself recursively".format(matcher))
+            else:
+                sub_stack = stack + [matcher]
+                for sub_pattern in self.package_matchers[matcher]:
+                    if self.pattern_matches(sub_pattern, recipie, sub_stack):
+                        result = True
+                        break
+        else:
+            result = fnmatch.fnmatch(recipie, pattern)
+
+        if inverted:
+            return not result
+        else:
+            return result

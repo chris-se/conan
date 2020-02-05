@@ -1,4 +1,3 @@
-import fnmatch
 import imp
 import inspect
 import os
@@ -137,19 +136,17 @@ class ConanFileLoader(object):
         # Prepare the settings for the loaded conanfile
         # Mixing the global settings with the specified for that name if exist
         tmp_settings = profile.processed_settings.copy()
-        package_settings_values = profile.package_settings_values
-        if package_settings_values:
-            pkg_settings = package_settings_values.get(conanfile.name)
-            if pkg_settings is None:
-                # FIXME: This seems broken for packages without user/channel
-                ref = "%s/%s@%s/%s" % (conanfile.name, conanfile.version,
-                                       conanfile._conan_user, conanfile._conan_channel)
-                for pattern, settings in package_settings_values.items():
-                    if fnmatch.fnmatchcase(ref, pattern):
-                        pkg_settings = settings
-                        break
-            if pkg_settings:
-                tmp_settings.values = Values.from_list(pkg_settings)
+        package_settings = profile.package_settings
+        if package_settings:
+            # FIXME: This seems broken for packages without user/channel
+            ref = "%s/%s@%s/%s" % (conanfile.name, conanfile.version,
+                                   conanfile._conan_user, conanfile._conan_channel)
+            merged_pkg_settings = {}
+            for pattern, settings in package_settings.items():
+                if pattern == conanfile.name or profile.pattern_matches(pattern, ref):
+                    merged_pkg_settings.update(settings)
+            if merged_pkg_settings:
+                tmp_settings.values = Values.from_list(merged_pkg_settings.items())
 
         conanfile.initialize(tmp_settings, profile.env_values)
 

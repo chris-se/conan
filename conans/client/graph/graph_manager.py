@@ -291,10 +291,15 @@ class GraphManager(object):
             str_ref = str(node.ref)
             new_profile_build_requires = []
             profile_build_requires = profile_build_requires or {}
+            def pattern_matches(pattern):
+                if profile_host:
+                    return profile_host.pattern_matches(pattern, str_ref)
+                else:
+                    return fnmatch.fnmatch(str_ref, pattern)
             for pattern, build_requires in profile_build_requires.items():
                 if ((node.recipe == RECIPE_CONSUMER and pattern == "&") or
                         (node.recipe != RECIPE_CONSUMER and pattern == "&!") or
-                        fnmatch.fnmatch(str_ref, pattern)):
+                        pattern_matches(pattern)):
                     for build_require in build_requires:
                         if build_require.name in package_build_requires:  # Override defined
                             # this is a way to have only one package Name for all versions

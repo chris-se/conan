@@ -206,6 +206,9 @@ class Printer(object):
         self._print_profile_section("build_requires", [(key, ", ".join(str(val) for val in values))
                                                        for key, values in
                                                        profile.build_requires.items()])
+        self._print_profile_section("package_matchers", [(key, ", ".join(str(val) for val in values))
+                                                         for key, values in
+                                                         profile.package_matchers.items()], separator='=')
 
         envs = []
         for package, env_vars in profile.env_values.data.items():

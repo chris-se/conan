@@ -144,8 +144,8 @@ def _load_profile(text, profile_path, default_folder):
 
         # Current profile before update with parents (but parent variables already applied)
         doc = ConfigParser(profile_parser.profile_text,
-                           allowed_fields=["build_requires", "settings", "env",
-                                           "scopes", "options"])
+                           allowed_fields=["build_requires", "package_matchers", "settings",
+                                           "env", "scopes", "options"])
 
         # Merge the inherited profile with the readed from current profile
         _apply_inner_profile(doc, inherited_profile)
@@ -199,6 +199,15 @@ def _apply_inner_profile(doc, base_profile):
                 base_profile.package_settings[package_name][name] = value
             else:
                 base_profile.settings[name] = value
+
+    if doc.package_matchers:
+        for matcher in doc.package_matchers.splitlines():
+            if '=' not in matcher:
+                raise ConanException("Invalid package_matcher line '%s'" % matcher)
+            name, packages = matcher.split('=', 1)
+            name = name.strip()
+            packages = [package.strip() for package in packages.split(',')]
+            base_profile.package_matchers.setdefault(name, []).extend(packages)
 
     if doc.build_requires:
         # FIXME CHECKS OF DUPLICATED?

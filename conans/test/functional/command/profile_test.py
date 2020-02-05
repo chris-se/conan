@@ -175,6 +175,7 @@ class ProfileTest(unittest.TestCase):
         self.assertEqual(load(pr_path), """[settings]
 [options]
 [build_requires]
+[package_matchers]
 [env]
 """)
 
@@ -197,6 +198,7 @@ class ProfileTest(unittest.TestCase):
         empty_profile = """[settings]
 [options]
 [build_requires]
+[package_matchers]
 [env]
 """
         client.run("profile new ./MyProfile")

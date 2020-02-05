@@ -89,6 +89,7 @@ zlib:compiler=gcc
 [build_requires]
 *: zlib/1.2.8@lasote/testing
 zlib/*: aaaa/1.2.3@lasote/testing, bb/1.2@lasote/testing
+[package_matchers]
 [env]""".splitlines(), profile.dumps().splitlines())
 
     def apply_test(self):
@@ -107,5 +108,6 @@ zlib/*: aaaa/1.2.3@lasote/testing, bb/1.2@lasote/testing
                          '\ncompiler.version=14\n'
                          '[options]\n'
                          '[build_requires]\n'
+                         '[package_matchers]\n'
                          '[env]\nCC=path/to/my/compiler/gcc\nCXX=path/to/my/compiler/g++',
                          profile.dumps())
